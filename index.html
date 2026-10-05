@@ -59,6 +59,7 @@ h1{font-size:20px;margin:0;flex:1;font-weight:700;letter-spacing:-.01em}
 .it{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--ln);width:100%;text-align:left}
 .it:first-of-type{margin-top:10px}
 .bar{width:4px;align-self:stretch;border-radius:2px}
+.tm{flex:none;width:68px;font-size:12px;font-weight:600;line-height:1.35}.tm span{display:block;color:var(--mu);font-weight:400}
 .it .t{flex:1;min-width:0}
 .it .t b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis}
 .it .t span{font-size:12px;color:var(--mu)}
@@ -111,7 +112,8 @@ label input,label select,label textarea{padding:10px;border-radius:10px;border:1
 <h3 id="ft">New entry</h3>
 <label>Title<input id="fti" required maxlength="80" placeholder="e.g. Dentist appointment"></label>
 <label>Type<select id="fty"><option value="task">Task</option><option value="appointment">Appointment</option><option value="event">Event</option><option value="holiday">Holiday</option></select></label>
-<div class="two"><label>Date<input id="fd" type="date" required></label><label>Time (optional)<input id="ftm" type="time"></label></div>
+<label>Date<input id="fd" type="date" required></label>
+<div class="two"><label><span id="lst">Start time (optional)</span><input id="ftm" type="time"></label><label>End time (optional)<input id="fte" type="time"></label></div>
 <label>Notes<textarea id="fn" rows="3"></textarea></label>
 <label class="chk"><input type="checkbox" id="fy"> Repeat every year</label>
 <div class="acts"><button type="button" class="dl" id="fdel">Delete</button><button type="button" id="fc">Cancel</button><button class="pr" id="fs">Save</button></div>
@@ -126,6 +128,8 @@ try{S=Object.assign(S,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save: storage is full or blocked')}};
 const p2=n=>String(n).padStart(2,'0'),iso=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const f12=t=>{if(!t)return'';let[h,m]=t.split(':').map(Number);const a=h>=12?'PM':'AM';h=h%12||12;return h+':'+p2(m)+' '+a};
+const fs=t=>f12(t).replace(' AM','a').replace(' PM','p');
 const now=new Date();let cur=new Date(now.getFullYear(),now.getMonth(),1),sel=iso(now),editing=null;
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2200)}
 function on(ds){
@@ -141,15 +145,15 @@ function render(){
     for(let c=0;c<7;c++){const d=new Date(y,m,1-off+r*7+c),ds=iso(d),ev=on(ds),hol=ev.some(e=>e.type==='holiday');
       const cl=['c',c>4&&'we',hol&&'hol',d.getMonth()!==m&&'om',ds===td&&'td',ds===sel&&'sel'].filter(Boolean).join(' ');
       h+=`<button class="${cl}" data-d="${ds}" aria-label="${d.toDateString()}${ev.length?', '+ev.length+' entries':''}"><span class="n">${d.getDate()}</span>`+
-      ev.slice(0,2).map(e=>`<span class="ch ${e.type}${e.done?' done':''}">${esc(e.title)}</span>`).join('')+(ev.length>2?`<span class="more">+${ev.length-2} more</span>`:'')+'</button>';}
+      ev.slice(0,2).map(e=>`<span class="ch ${e.type}${e.done?' done':''}">${e.time?fs(e.time)+' ':''}${esc(e.title)}</span>`).join('')+(ev.length>2?`<span class="more">+${ev.length-2} more</span>`:'')+'</button>';}
     h+='</div>';}
   $('#grid').innerHTML=h;panel();
 }
 function item(e,showDate){
-  const bar=`var(--${e.type})`,meta=[showDate&&new Date(e.date+'T00:00').toDateString(),e.time,e.type[0].toUpperCase()+e.type.slice(1),e.yearly&&'Yearly',e.notes].filter(Boolean).join(' · ');
+  const bar=`var(--${e.type})`,meta=[showDate&&new Date(e.date+'T00:00').toDateString(),e.type[0].toUpperCase()+e.type.slice(1),e.yearly&&'Yearly',e.notes].filter(Boolean).join(' · ');
   return `<div class="it${e.done?' done':''}" data-id="${e.id}" data-d="${e.date}"><i class="bar" style="background:${bar}"></i>`+
-  (e.type==='task'?`<input type="checkbox" class="ck" ${e.done?'checked':''} aria-label="Mark done">`:'')+
-  `<div class="t"><b>${esc(e.title)}</b><span>${esc(meta)}</span></div></div>`;
+  `<div class="tm">${e.time?f12(e.time)+(e.end?'<span>to '+f12(e.end)+'</span>':''):'All day'}</div><div class="t"><b>${esc(e.title)}</b><span>${esc(meta)}</span></div>`+
+  (e.type==='task'?`<input type="checkbox" class="ck" ${e.done?'checked':''} aria-label="Mark done">`:'')+'</div>';
 }
 function panel(){
   const q=$('#q').value.trim().toLowerCase(),P=$('#panel');
@@ -162,9 +166,11 @@ function panel(){
 function open(e,ds){
   editing=e||null;$('#ft').textContent=e?'Edit entry':'New entry';
   $('#fti').value=e?e.title:'';$('#fty').value=e?e.type:'task';$('#fd').value=e?e.date:ds;
-  $('#ftm').value=e?e.time||'':'';$('#fn').value=e?e.notes||'':'';$('#fy').checked=!!(e&&e.yearly);
-  $('#fdel').style.display=e?'':'none';$('#dlg').showModal();
+  $('#ftm').value=e?e.time||'':'';$('#fte').value=e?e.end||'':'';$('#fn').value=e?e.notes||'':'';$('#fy').checked=!!(e&&e.yearly);
+  setReq();$('#fdel').style.display=e?'':'none';$('#dlg').showModal();
 }
+function setReq(){const a=$('#fty').value==='appointment';$('#ftm').required=a;$('#lst').textContent=a?'Start time (required)':'Start time (optional)'}
+$('#fty').onchange=setReq;
 function go(ds){sel=ds;const d=new Date(ds+'T00:00');cur=new Date(d.getFullYear(),d.getMonth(),1);render()}
 $('#grid').onclick=e=>{const b=e.target.closest('.c');if(!b)return;const ds=b.dataset.d;
   if(ds===sel){open(null,ds)}else go(ds)};
@@ -172,8 +178,10 @@ $('#panel').onclick=e=>{const it=e.target.closest('.it');if(!it)return;const ev=
   if(e.target.classList.contains('ck')&&ev){ev.done=e.target.checked;save();render();return}
   if(ev)open(ev);else if(it.dataset.id.startsWith('b'))toast('Built-in holiday. Turn it off in the ⋯ menu.')};
 $('#f').onsubmit=e=>{e.preventDefault();
-  const o={title:$('#fti').value.trim(),type:$('#fty').value,date:$('#fd').value,time:$('#ftm').value,notes:$('#fn').value.trim(),yearly:$('#fy').checked};
+  const o={title:$('#fti').value.trim(),type:$('#fty').value,date:$('#fd').value,time:$('#ftm').value,end:$('#fte').value,notes:$('#fn').value.trim(),yearly:$('#fy').checked};
   if(!o.title||!o.date)return;
+  if(o.end&&!o.time)return toast('Add a start time before the end time');
+  if(o.end&&o.end<=o.time)return toast('End time must be after the start time');
   if(editing)Object.assign(editing,o);else S.events.push(Object.assign({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),done:false},o));
   save();$('#dlg').close();go(o.date);toast('Saved')};
 $('#fc').onclick=()=>$('#dlg').close();
