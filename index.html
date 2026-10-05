@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My Calendar</title>
+<meta name="theme-color" content="#2f3fb5">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+:root{--bg:#eef1f6;--sf:#fff;--tx:#1b2433;--mu:#6b7686;--ln:#dde2ea;--ac:#2f3fb5;--acx:#fff;
+--wk:#fff1b3;--wkx:#7a5b00;--hd:#c9eed2;--hdx:#13602b;--td:#2f3fb5;
+--task:#2f6fe0;--appt:#8a4fd6;--event:#e07a1f;--holiday:#1f9d4a;box-sizing:border-box}
+@media(prefers-color-scheme:dark){:root{--bg:#0f141c;--sf:#171e29;--tx:#e8edf5;--mu:#93a0b3;--ln:#2a3342;--ac:#7c8cff;--acx:#0f141c;
+--wk:#3b3410;--wkx:#f0d46a;--hd:#173a24;--hdx:#7fe0a0;--td:#7c8cff}}
+*,*:before,*:after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+body{font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx);display:flex;justify-content:center;
+padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+#app{width:100%;max-width:760px;display:flex;flex-direction:column;min-height:100%}
+header{display:flex;align-items:center;gap:6px;padding:12px 12px 6px}
+h1{font-size:20px;margin:0;flex:1;font-weight:700;letter-spacing:-.01em}
+.ib{width:38px;height:38px;border-radius:10px;background:var(--sf);border:1px solid var(--ln);font-size:18px;line-height:1}
+.tb{padding:0 12px;height:38px;border-radius:10px;background:var(--sf);border:1px solid var(--ln);font-weight:600;font-size:13px}
+#search{display:none;padding:0 12px 6px}
+#search.on{display:block}
+#search input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--ln);background:var(--sf)}
+.cal{margin:6px 8px;background:var(--sf);border:1px solid var(--ln);border-radius:14px;overflow:hidden}
+.dow,.row{display:grid;grid-template-columns:repeat(7,1fr)}
+.dow div{text-align:center;font-size:12px;font-weight:600;color:var(--mu);padding:8px 0;border-bottom:1px solid var(--ln)}
+.dow div:nth-child(n+6){background:var(--wk);color:var(--wkx)}
+.c{min-height:66px;padding:4px 3px;border:0;border-right:1px solid var(--ln);border-bottom:1px solid var(--ln);text-align:left;display:flex;flex-direction:column;gap:2px;overflow:hidden;background:var(--sf);min-width:0}
+.row .c:nth-child(7){border-right:0}
+.row:last-child .c{border-bottom:0}
+.c.we{background:var(--wk)}
+.c.hol{background:var(--hd)}
+.c.om .n{opacity:.4}
+.c.om .ch{opacity:.55}
+.n{font-size:13px;font-weight:600;width:24px;height:24px;display:grid;place-items:center;border-radius:50%}
+.c.we .n{color:var(--wkx)}
+.c.hol .n{color:var(--hdx)}
+.c.td .n{background:var(--td);color:var(--acx)}
+.c.sel{box-shadow:inset 0 0 0 2px var(--ac)}
+.ch{font-size:10px;line-height:1.25;padding:1px 4px;border-radius:4px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.ch.task{background:var(--task)}.ch.appointment{background:var(--appt)}.ch.event{background:var(--event)}.ch.holiday{background:var(--holiday)}
+.ch.done{opacity:.5;text-decoration:line-through}
+.more{font-size:10px;color:var(--mu);padding-left:3px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;padding:4px 14px;font-size:12px;color:var(--mu)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px;border:1px solid var(--ln)}
+.panel{margin:6px 8px 90px;background:var(--sf);border:1px solid var(--ln);border-radius:14px;padding:14px}
+.panel h2{margin:0;font-size:16px}
+.sub{color:var(--hdx);font-size:13px;font-weight:600;margin-top:2px}
+.it{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--ln);width:100%;text-align:left}
+.it:first-of-type{margin-top:10px}
+.bar{width:4px;align-self:stretch;border-radius:2px}
+.it .t{flex:1;min-width:0}
+.it .t b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.it .t span{font-size:12px;color:var(--mu)}
+.it.done b{text-decoration:line-through;color:var(--mu)}
+.ck{width:22px;height:22px;accent-color:var(--ac)}
+.empty{color:var(--mu);padding:14px 0 4px}
+.fab{position:fixed;right:max(18px,calc(50% - 362px));bottom:calc(18px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--ac);color:var(--acx);font-size:30px;box-shadow:0 6px 18px rgba(20,30,80,.3)}
+dialog{border:0;border-radius:16px;padding:0;width:min(440px,calc(100% - 24px));background:var(--sf);color:var(--tx)}
+dialog::backdrop{background:rgba(10,15,25,.5)}
+form{padding:18px;display:grid;gap:12px}
+form h3{margin:0}
+label{display:grid;gap:4px;font-size:13px;color:var(--mu);font-weight:600}
+label input,label select,label textarea{padding:10px;border-radius:10px;border:1px solid var(--ln);background:var(--bg);color:var(--tx);font-weight:400;font-size:16px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chk{display:flex;align-items:center;gap:8px;font-weight:500}
+.acts{display:flex;gap:8px;justify-content:flex-end}
+.acts button{padding:10px 16px;border-radius:10px;font-weight:600;border:1px solid var(--ln)}
+.acts .pr{background:var(--ac);color:var(--acx);border-color:var(--ac)}
+.acts .dl{margin-right:auto;color:#d33;border-color:transparent}
+#menu{padding:6px}
+#menu button{display:block;width:100%;text-align:left;padding:12px 14px;border-radius:8px}
+#menu button:hover{background:var(--bg)}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:8px 14px;border-radius:20px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.on{opacity:1}
+@media(min-width:600px){.c{min-height:96px;padding:6px}.ch{font-size:11px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+<h1 id="ttl"></h1>
+<button class="ib" id="prev" aria-label="Previous month">‹</button>
+<button class="tb" id="today">Today</button>
+<button class="ib" id="next" aria-label="Next month">›</button>
+<button class="ib" id="sb" aria-label="Search">⌕</button>
+<button class="ib" id="mb" aria-label="More options">⋯</button>
+</header>
+<div id="search"><input id="q" type="search" placeholder="Search tasks, events, notes…"></div>
+<div class="cal"><div class="dow"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div><div id="grid"></div></div>
+<div class="legend"><span><i style="background:var(--hd)"></i>Holiday</span><span><i style="background:var(--wk)"></i>Weekend</span><span><i style="background:var(--td)"></i>Today</span></div>
+<div class="panel" id="panel"></div>
+</div>
+<button class="fab" id="add" aria-label="Add entry">+</button>
+<div id="toast"></div>
+
+<dialog id="menu"><button id="mx">Export backup (.json)</button><button id="mi">Import backup</button><button id="mh"></button><input type="file" id="file" accept=".json" hidden></dialog>
+
+<dialog id="dlg"><form id="f" method="dialog">
+<h3 id="ft">New entry</h3>
+<label>Title<input id="fti" required maxlength="80" placeholder="e.g. Dentist appointment"></label>
+<label>Type<select id="fty"><option value="task">Task</option><option value="appointment">Appointment</option><option value="event">Event</option><option value="holiday">Holiday</option></select></label>
+<div class="two"><label>Date<input id="fd" type="date" required></label><label>Time (optional)<input id="ftm" type="time"></label></div>
+<label>Notes<textarea id="fn" rows="3"></textarea></label>
+<label class="chk"><input type="checkbox" id="fy"> Repeat every year</label>
+<div class="acts"><button type="button" class="dl" id="fdel">Delete</button><button type="button" id="fc">Cancel</button><button class="pr" id="fs">Save</button></div>
+</form></dialog>
+
+<script>
+const $=s=>document.querySelector(s),KEY='mycal.v1';
+const MY={'01-01':"New Year's Day",'05-01':'Labour Day','08-31':'Merdeka Day','09-16':'Malaysia Day','12-25':'Christmas Day'};
+const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
+let S={events:[],my:true};
+try{S=Object.assign(S,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save: storage is full or blocked')}};
+const p2=n=>String(n).padStart(2,'0'),iso=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const now=new Date();let cur=new Date(now.getFullYear(),now.getMonth(),1),sel=iso(now),editing=null;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2200)}
+function on(ds){
+  const r=S.events.filter(e=>e.date===ds||(e.yearly&&e.date.slice(5)===ds.slice(5)&&e.date<ds));
+  if(S.my&&MY[ds.slice(5)])r.push({id:'b'+ds,title:MY[ds.slice(5)],type:'holiday',builtin:1,date:ds});
+  return r.sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
+}
+function render(){
+  $('#ttl').textContent=`${MON[cur.getMonth()]} ${cur.getFullYear()}`;
+  const y=cur.getFullYear(),m=cur.getMonth(),off=(new Date(y,m,1).getDay()+6)%7,
+  rows=Math.ceil((off+new Date(y,m+1,0).getDate())/7),td=iso(now);let h='';
+  for(let r=0;r<rows;r++){h+='<div class="row">';
+    for(let c=0;c<7;c++){const d=new Date(y,m,1-off+r*7+c),ds=iso(d),ev=on(ds),hol=ev.some(e=>e.type==='holiday');
+      const cl=['c',c>4&&'we',hol&&'hol',d.getMonth()!==m&&'om',ds===td&&'td',ds===sel&&'sel'].filter(Boolean).join(' ');
+      h+=`<button class="${cl}" data-d="${ds}" aria-label="${d.toDateString()}${ev.length?', '+ev.length+' entries':''}"><span class="n">${d.getDate()}</span>`+
+      ev.slice(0,2).map(e=>`<span class="ch ${e.type}${e.done?' done':''}">${esc(e.title)}</span>`).join('')+(ev.length>2?`<span class="more">+${ev.length-2} more</span>`:'')+'</button>';}
+    h+='</div>';}
+  $('#grid').innerHTML=h;panel();
+}
+function item(e,showDate){
+  const bar=`var(--${e.type})`,meta=[showDate&&new Date(e.date+'T00:00').toDateString(),e.time,e.type[0].toUpperCase()+e.type.slice(1),e.yearly&&'Yearly',e.notes].filter(Boolean).join(' · ');
+  return `<div class="it${e.done?' done':''}" data-id="${e.id}" data-d="${e.date}"><i class="bar" style="background:${bar}"></i>`+
+  (e.type==='task'?`<input type="checkbox" class="ck" ${e.done?'checked':''} aria-label="Mark done">`:'')+
+  `<div class="t"><b>${esc(e.title)}</b><span>${esc(meta)}</span></div></div>`;
+}
+function panel(){
+  const q=$('#q').value.trim().toLowerCase(),P=$('#panel');
+  if(q){const r=S.events.filter(e=>(e.title+' '+(e.notes||'')).toLowerCase().includes(q)).sort((a,b)=>a.date.localeCompare(b.date));
+    P.innerHTML=`<h2>${r.length} result${r.length===1?'':'s'}</h2>`+(r.map(e=>item(e,1)).join('')||'<div class="empty">Nothing matches your search.</div>');return;}
+  const d=new Date(sel+'T00:00'),ev=on(sel),hn=ev.find(e=>e.type==='holiday');
+  P.innerHTML=`<h2>${d.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</h2>`+(hn?`<div class="sub">${esc(hn.title)}</div>`:'')+
+  (ev.map(e=>item(e)).join('')||'<div class="empty">Nothing planned. Tap + to add a task, appointment, event or holiday.</div>');
+}
+function open(e,ds){
+  editing=e||null;$('#ft').textContent=e?'Edit entry':'New entry';
+  $('#fti').value=e?e.title:'';$('#fty').value=e?e.type:'task';$('#fd').value=e?e.date:ds;
+  $('#ftm').value=e?e.time||'':'';$('#fn').value=e?e.notes||'':'';$('#fy').checked=!!(e&&e.yearly);
+  $('#fdel').style.display=e?'':'none';$('#dlg').showModal();
+}
+function go(ds){sel=ds;const d=new Date(ds+'T00:00');cur=new Date(d.getFullYear(),d.getMonth(),1);render()}
+$('#grid').onclick=e=>{const b=e.target.closest('.c');if(!b)return;const ds=b.dataset.d;
+  if(ds===sel){open(null,ds)}else go(ds)};
+$('#panel').onclick=e=>{const it=e.target.closest('.it');if(!it)return;const ev=S.events.find(x=>x.id===it.dataset.id);
+  if(e.target.classList.contains('ck')&&ev){ev.done=e.target.checked;save();render();return}
+  if(ev)open(ev);else if(it.dataset.id.startsWith('b'))toast('Built-in holiday. Turn it off in the ⋯ menu.')};
+$('#f').onsubmit=e=>{e.preventDefault();
+  const o={title:$('#fti').value.trim(),type:$('#fty').value,date:$('#fd').value,time:$('#ftm').value,notes:$('#fn').value.trim(),yearly:$('#fy').checked};
+  if(!o.title||!o.date)return;
+  if(editing)Object.assign(editing,o);else S.events.push(Object.assign({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),done:false},o));
+  save();$('#dlg').close();go(o.date);toast('Saved')};
+$('#fc').onclick=()=>$('#dlg').close();
+$('#fdel').onclick=()=>{if(confirm('Delete this entry?')){S.events=S.events.filter(x=>x!==editing);save();$('#dlg').close();render();toast('Deleted')}};
+$('#add').onclick=()=>open(null,sel);
+$('#prev').onclick=()=>{cur=new Date(cur.getFullYear(),cur.getMonth()-1,1);render()};
+$('#next').onclick=()=>{cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);render()};
+$('#today').onclick=()=>go(iso(new Date()));
+$('#sb').onclick=()=>{$('#search').classList.toggle('on');if($('#search').classList.contains('on'))$('#q').focus();else{$('#q').value='';panel()}};
+$('#q').oninput=panel;
+const mh=()=>$('#mh').textContent=(S.my?'Hide':'Show')+' Malaysia public holidays (fixed dates)';
+$('#mb').onclick=()=>{mh();$('#menu').showModal()};
+$('#menu').onclick=e=>{if(e.target===$('#menu'))$('#menu').close()};
+$('#mh').onclick=()=>{S.my=!S.my;save();$('#menu').close();render()};
+$('#mx').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));
+  a.download='calendar-backup-'+iso(new Date())+'.json';a.click();$('#menu').close()};
+$('#mi').onclick=()=>$('#file').click();
+$('#file').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(!Array.isArray(j.events))throw 0;
+  if(confirm(`Replace current data with ${j.events.length} imported entries?`)){S=Object.assign(S,j);save();render();toast('Imported')}}catch(x){toast('That file is not a valid backup')}
+  e.target.value='';$('#menu').close()};
+render();
+if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
